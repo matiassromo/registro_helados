@@ -1,4 +1,3 @@
-import io
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -6,6 +5,8 @@ from pydantic import BaseModel
 import pandas as pd
 from datetime import datetime
 from typing import List, Dict
+import io
+import os
 
 class Helado:
     def __init__(self, sabor, stock=10, precio=0.80):
@@ -30,22 +31,30 @@ class Helado:
         return self.cantidad_vendida * self.precio
 
 class SistemaVentas:
-
-    def guardar_ventas_excel(self):
-        if self.ventas:
-            df = pd.DataFrame(self.ventas)
-            stock_data = {sabor: helado.stock for sabor, helado in self.helados.items()}
-            stock_df = pd.DataFrame(list(stock_data.items()), columns=['Sabor', 'Stock Restante'])
-            
-            with io.BytesIO() as buffer:
-                with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                    df.to_excel(writer, sheet_name='Ventas', index=False)
-                    stock_df.to_excel(writer, sheet_name='Stock', index=False)
-                buffer.seek(0)
-                return buffer, True, "Las ventas y el stock han sido guardados en un archivo de Excel."
-        else:
-            return None, False, "No hay ventas registradas para guardar."
-
+    def __init__(self):
+        self.helados = {
+            "Naranjilla Hielo": Helado("Naranjilla Hielo"),
+            "Mora Hielo": Helado("Mora Hielo"),
+            "Coco Hielo": Helado("Coco Hielo"),
+            "Tres Sabores Hielo": Helado("Tres Sabores Hielo"),
+            "Come y Bebe": Helado("Come y Bebe"),
+            "Coco Mora": Helado("Coco Mora"),
+            "Maracumango": Helado("Maracumango"),
+            "Guanábana Mora": Helado("Guanábana Mora"),
+            "Tres Sabores": Helado("Tres Sabores"),
+            "Chocolate Coco": Helado("Chocolate Coco"),
+            "Chocolate Hielo": Helado("Chocolate Hielo"),
+            "Chocovainilla": Helado("Chocovainilla"),
+            "Coco Crema": Helado("Coco Crema"),
+            "Chicle": Helado("Chicle"),
+            "Ron Pasas": Helado("Ron Pasas"),
+            "Mora Crema": Helado("Mora Crema"),
+            "Mora Chocovainilla": Helado("Mora Chocovainilla"),
+            "Chocolate Crema": Helado("Chocolate Crema"),
+            "Maracuyá": Helado("Maracuyá"),
+            "Queso Crema": Helado("Queso Crema"),
+        }
+        self.ventas = []
 
     def registrar_venta(self, sabor, cantidad=1):
         if sabor in self.helados:
@@ -71,17 +80,20 @@ class SistemaVentas:
         stock_info = {helado.sabor: helado.stock for helado in self.helados.values()}
         return stock_info
 
-    def guardar_ventas_excel(self, filename="ventas_helados.xlsx"):
+    def guardar_ventas_excel(self):
         if self.ventas:
             df = pd.DataFrame(self.ventas)
             stock_data = {sabor: helado.stock for sabor, helado in self.helados.items()}
             stock_df = pd.DataFrame(list(stock_data.items()), columns=['Sabor', 'Stock Restante'])
-            with pd.ExcelWriter(filename) as writer:
-                df.to_excel(writer, sheet_name='Ventas', index=False)
-                stock_df.to_excel(writer, sheet_name='Stock', index=False)
-            return True, f"Las ventas y el stock han sido guardados en {filename}"
+            
+            with io.BytesIO() as buffer:
+                with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                    df.to_excel(writer, sheet_name='Ventas', index=False)
+                    stock_df.to_excel(writer, sheet_name='Stock', index=False)
+                buffer.seek(0)
+                return buffer, True, "Las ventas y el stock han sido guardados en un archivo de Excel."
         else:
-            return False, "No hay ventas registradas para guardar."
+            return None, False, "No hay ventas registradas para guardar."
 
     def reset_stock(self):
         for helado in self.helados.values():
@@ -122,26 +134,6 @@ def obtener_sabores():
 
 @app.post("/guardar")
 def guardar_ventas():
-    success, message = sistema_ventas.guardar_ventas_excel()
-    if success:
-        return {"message": message}
-    else:
-        raise HTTPException(status_code=400, detail=message)
-
-@app.post("/reset")
-def reset_stock():
-    sistema_ventas.reset_stock()
-    return {"message": "Todos los stocks han sido reseteados a 10."}
-
-app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
-
-@app.get("/", response_class=HTMLResponse)
-def read_root():
-    with open("frontend/index.html") as f:
-        return HTMLResponse(content=f.read())
-    
-@app.get("/download")
-def descargar_excel():
     buffer, success, message = sistema_ventas.guardar_ventas_excel()
     if success:
         headers = {
@@ -151,3 +143,14 @@ def descargar_excel():
     else:
         raise HTTPException(status_code=400, detail=message)
 
+@app.post("/reset")
+def reset_stock():
+    sistema_ventas.reset_stock()
+    return {"message": "Todos los stocks han sido reseteados a 10."}
+
+app.mount("/static", StaticFiles(directory="../frontend/static"), name="static")
+
+@app.get("/", response_class=HTMLResponse)
+def read_root():
+    with open("../frontend/index.html") as f:
+        return HTMLResponse(content=f.read())

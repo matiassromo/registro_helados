@@ -32,6 +32,7 @@ async function cargarSabores() {
     const response = await fetch('/sabores');
     const data = await response.json();
     const saborSelect = document.getElementById('sabor');
+    saborSelect.innerHTML = ''; // Asegúrate de limpiar el contenido anterior
     for (const sabor of data.sabores) {
         const option = document.createElement('option');
         option.value = sabor;
@@ -64,7 +65,6 @@ async function guardarVentas() {
         alert('Error: ' + errorData.detail);
     }
 }
-
 
 async function resetStock() {
     const response = await fetch('/reset', { method: 'POST' });
