@@ -1,12 +1,12 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import pandas as pd
 from datetime import datetime
-from typing import List, Dict
 import os
-from io import BytesIO
+
+EXCEL_FILE_PATH = "ventas_helados.xlsx"
 
 class Helado:
     def __init__(self, sabor, stock=10, precio=0.80):
@@ -81,18 +81,40 @@ class SistemaVentas:
         return stock_info
 
     def guardar_ventas_excel(self):
-        if self.ventas:
-            buffer = BytesIO()
-            df = pd.DataFrame(self.ventas)
-            stock_data = {sabor: helado.stock for sabor, helado in self.helados.items()}
-            stock_df = pd.DataFrame(list(stock_data.items()), columns=['Sabor', 'Stock Restante'])
-            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                df.to_excel(writer, sheet_name='Ventas', index=False)
+        modo = 'a' if os.path.exists(EXCEL_FILE_PATH) else 'w'
+
+        try:
+            with pd.ExcelWriter(EXCEL_FILE_PATH, engine='openpyxl', mode=modo) as writer:
+                if 'Ventas' in writer.book.sheetnames:
+                    ventas_sheet = writer.book['Ventas']
+                    startrow = ventas_sheet.max_row
+                    df = pd.DataFrame(self.ventas)
+                    df.to_excel(writer, sheet_name='Ventas', index=False, startrow=startrow, header=False)
+                else:
+                    df = pd.DataFrame(self.ventas)
+                    df.to_excel(writer, sheet_name='Ventas', index=False)
+
+                if 'Stock' in writer.book.sheetnames:
+                    writer.book.remove(writer.book['Stock'])
+                stock_data = {sabor: helado.stock for sabor, helado in self.helados.items()}
+                stock_df = pd.DataFrame(list(stock_data.items()), columns=['Sabor', 'Stock Restante'])
                 stock_df.to_excel(writer, sheet_name='Stock', index=False)
-            buffer.seek(0)
-            return buffer, True, "Las ventas y el stock han sido guardados en el archivo Excel."
+
+            return EXCEL_FILE_PATH, True, "Las ventas y el stock han sido guardados en el archivo Excel."
+
+        except PermissionError as e:
+            return None, False, f"Error de permisos: {str(e)}"
+        except Exception as e:
+            return None, False, f"Error: {str(e)}"
+
+    def eliminar_archivo_excel(self):
+        if os.path.exists(EXCEL_FILE_PATH):
+            os.remove(EXCEL_FILE_PATH)
+            self.ventas.clear()
+            self.reset_stock()
+            return True, "El archivo Excel ha sido eliminado y todas las ventas se han reiniciado."
         else:
-            return None, False, "No hay ventas registradas para guardar."
+            return False, "No se encontró un archivo Excel para eliminar."
 
     def reset_stock(self):
         for helado in self.helados.values():
@@ -130,21 +152,19 @@ def stock_helados():
 def sabores():
     return sistema_ventas.obtener_sabores_ordenados()
 
-
 @app.post("/guardar")
 def guardar_ventas():
-    buffer, success, message = sistema_ventas.guardar_ventas_excel()
+    path, success, message = sistema_ventas.guardar_ventas_excel()
     if success:
         return {"message": message}
     else:
-        raise HTTPException(status_code=400, detail=message)
+        raise HTTPException(status_code=500, detail=message)
 
-@app.get("/download")
-def descargar_excel():
-    buffer, success, message = sistema_ventas.guardar_ventas_excel()
+@app.post("/eliminar-excel")
+def eliminar_excel():
+    success, message = sistema_ventas.eliminar_archivo_excel()
     if success:
-        buffer.seek(0)
-        return StreamingResponse(buffer, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": "attachment;filename=ventas_helados.xlsx"})
+        return {"message": message}
     else:
         raise HTTPException(status_code=400, detail=message)
 

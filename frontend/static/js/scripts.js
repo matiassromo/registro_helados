@@ -30,10 +30,10 @@ document.getElementById('vender-form').addEventListener('submit', async function
 
 async function cargarSabores() {
     const response = await fetch('/sabores');
-    const sabores = await response.json(); // Cambiar para obtener la lista directamente
+    const data = await response.json();
     const saborSelect = document.getElementById('sabor');
     saborSelect.innerHTML = ''; // Asegúrate de limpiar el contenido anterior
-    for (const sabor of sabores) { // Cambiar data.sabores a sabores
+    for (const sabor of data) {
         const option = document.createElement('option');
         option.value = sabor;
         option.textContent = sabor;
@@ -48,18 +48,22 @@ async function actualizarTotal() {
 }
 
 async function guardarVentas() {
-    const response = await fetch('/download');
+    const response = await fetch('/guardar', { method: 'POST' });
     if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = 'ventas_helados.xlsx';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        alert("Archivo de ventas descargado.");
+        const data = await response.json();
+        alert(data.message);
+    } else {
+        const errorData = await response.json();
+        alert('Error: ' + errorData.detail);
+    }
+}
+
+async function eliminarExcel() {
+    const response = await fetch('/eliminar-excel', { method: 'POST' });
+    if (response.ok) {
+        const data = await response.json();
+        alert(data.message);
+        actualizarTotal();
     } else {
         const errorData = await response.json();
         alert('Error: ' + errorData.detail);
