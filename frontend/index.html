@@ -1,0 +1,38 @@
+<!-- frontend/index.html -->
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Sistema de Ventas de Helados</title>
+    <link rel="stylesheet" href="static/css/styles.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Sistema de Ventas de Helados</h1>
+
+        <form id="vender-form" class="mt-4">
+            <div class="form-group">
+                <label for="sabor">Sabor</label>
+                <select class="form-control" id="sabor" name="sabor"></select>
+            </div>
+            <div class="form-group">
+                <label for="cantidad">Cantidad</label>
+                <input type="number" class="form-control" id="cantidad" name="cantidad" min="1" value="1">
+            </div>
+            <button type="submit" class="btn btn-primary">Registrar Venta</button>
+        </form>
+
+        <h2 class="mt-5" id="total-venta">Total de la venta: $0.00</h2>
+        <h2 class="mt-5" id="total-ventas">Total de ventas acumulado: $0.00</h2>
+
+        <button class="btn btn-success mt-3" onclick="guardarVentas()">Guardar Ventas en Excel</button>
+        <button class="btn btn-danger mt-3" onclick="resetStock()">Resetear Stock</button>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="static/js/scripts.js"></script>
+</body>
+</html>
