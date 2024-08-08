@@ -66,6 +66,7 @@ async function guardarVentas() {
     }
 }
 
+
 async function resetStock() {
     const response = await fetch('/reset', { method: 'POST' });
     const data = await response.json();

@@ -86,12 +86,12 @@ class SistemaVentas:
             stock_data = {sabor: helado.stock for sabor, helado in self.helados.items()}
             stock_df = pd.DataFrame(list(stock_data.items()), columns=['Sabor', 'Stock Restante'])
             
-            with io.BytesIO() as buffer:
-                with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                    df.to_excel(writer, sheet_name='Ventas', index=False)
-                    stock_df.to_excel(writer, sheet_name='Stock', index=False)
-                buffer.seek(0)
-                return buffer, True, "Las ventas y el stock han sido guardados en un archivo de Excel."
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                df.to_excel(writer, sheet_name='Ventas', index=False)
+                stock_df.to_excel(writer, sheet_name='Stock', index=False)
+            buffer.seek(0)
+            return buffer, True, "Las ventas y el stock han sido guardados en un archivo de Excel."
         else:
             return None, False, "No hay ventas registradas para guardar."
 
@@ -132,14 +132,14 @@ def obtener_sabores():
     sabores = sistema_ventas.obtener_sabores_ordenados()
     return {"sabores": sabores}
 
-@app.post("/guardar")
-def guardar_ventas():
+@app.get("/download")
+def descargar_excel():
     buffer, success, message = sistema_ventas.guardar_ventas_excel()
     if success:
         headers = {
             'Content-Disposition': 'attachment; filename="ventas_helados.xlsx"'
         }
-        return StreamingResponse(buffer, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers=headers)
+        return StreamingResponse(io.BytesIO(buffer.read()), media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers=headers)
     else:
         raise HTTPException(status_code=400, detail=message)
 
