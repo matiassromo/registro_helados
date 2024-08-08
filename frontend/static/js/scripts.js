@@ -47,15 +47,24 @@ async function actualizarTotal() {
 }
 
 async function guardarVentas() {
-    const response = await fetch('/guardar', { method: 'POST' });
+    const response = await fetch('/download');
     if (response.ok) {
-        const data = await response.json();
-        alert(data.message);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'ventas_helados.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        alert("Archivo de ventas descargado.");
     } else {
         const errorData = await response.json();
         alert('Error: ' + errorData.detail);
     }
 }
+
 
 async function resetStock() {
     const response = await fetch('/reset', { method: 'POST' });
