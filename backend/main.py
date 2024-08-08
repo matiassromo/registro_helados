@@ -140,9 +140,9 @@ def reset_stock():
     sistema_ventas.reset_stock()
     return {"message": "Todos los stocks han sido reseteados a 10."}
 
-app.mount("/static", StaticFiles(directory="../frontend/static"), name="static")
+app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
 @app.get("/", response_class=HTMLResponse)
 def read_root():
-    with open("../frontend/index.html") as f:
+    with open("frontend/index.html") as f:
         return HTMLResponse(content=f.read())
