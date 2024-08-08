@@ -1,12 +1,12 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import pandas as pd
 from datetime import datetime
 from typing import List, Dict
-import io
 import os
+from io import BytesIO
 
 class Helado:
     def __init__(self, sabor, stock=10, precio=0.80):
@@ -82,16 +82,15 @@ class SistemaVentas:
 
     def guardar_ventas_excel(self):
         if self.ventas:
+            buffer = BytesIO()
             df = pd.DataFrame(self.ventas)
             stock_data = {sabor: helado.stock for sabor, helado in self.helados.items()}
             stock_df = pd.DataFrame(list(stock_data.items()), columns=['Sabor', 'Stock Restante'])
-            
-            buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
                 df.to_excel(writer, sheet_name='Ventas', index=False)
                 stock_df.to_excel(writer, sheet_name='Stock', index=False)
             buffer.seek(0)
-            return buffer, True, "Las ventas y el stock han sido guardados en un archivo de Excel."
+            return buffer, True, "Las ventas y el stock han sido guardados en el archivo Excel."
         else:
             return None, False, "No hay ventas registradas para guardar."
 
@@ -128,18 +127,24 @@ def stock_helados():
     return stock
 
 @app.get("/sabores")
-def obtener_sabores():
-    sabores = sistema_ventas.obtener_sabores_ordenados()
-    return {"sabores": sabores}
+def sabores():
+    return sistema_ventas.obtener_sabores_ordenados()
+
+
+@app.post("/guardar")
+def guardar_ventas():
+    buffer, success, message = sistema_ventas.guardar_ventas_excel()
+    if success:
+        return {"message": message}
+    else:
+        raise HTTPException(status_code=400, detail=message)
 
 @app.get("/download")
 def descargar_excel():
     buffer, success, message = sistema_ventas.guardar_ventas_excel()
     if success:
-        headers = {
-            'Content-Disposition': 'attachment; filename="ventas_helados.xlsx"'
-        }
-        return StreamingResponse(io.BytesIO(buffer.read()), media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers=headers)
+        buffer.seek(0)
+        return StreamingResponse(buffer, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": "attachment;filename=ventas_helados.xlsx"})
     else:
         raise HTTPException(status_code=400, detail=message)
 
@@ -148,9 +153,11 @@ def reset_stock():
     sistema_ventas.reset_stock()
     return {"message": "Todos los stocks han sido reseteados a 10."}
 
-app.mount("/static", StaticFiles(directory="../frontend/static"), name="static")
+# Montar los archivos estáticos
+app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
+# Punto de entrada para servir el archivo HTML
 @app.get("/", response_class=HTMLResponse)
-def read_root():
-    with open("../frontend/index.html") as f:
-        return HTMLResponse(content=f.read())
+def serve_html():
+    with open(os.path.join("frontend", "index.html")) as f:
+        return HTMLResponse(f.read())

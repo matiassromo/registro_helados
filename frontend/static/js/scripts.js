@@ -30,10 +30,10 @@ document.getElementById('vender-form').addEventListener('submit', async function
 
 async function cargarSabores() {
     const response = await fetch('/sabores');
-    const data = await response.json();
+    const sabores = await response.json(); // Cambiar para obtener la lista directamente
     const saborSelect = document.getElementById('sabor');
     saborSelect.innerHTML = ''; // Asegúrate de limpiar el contenido anterior
-    for (const sabor of data.sabores) {
+    for (const sabor of sabores) { // Cambiar data.sabores a sabores
         const option = document.createElement('option');
         option.value = sabor;
         option.textContent = sabor;
@@ -65,7 +65,6 @@ async function guardarVentas() {
         alert('Error: ' + errorData.detail);
     }
 }
-
 
 async function resetStock() {
     const response = await fetch('/reset', { method: 'POST' });
