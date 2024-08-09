@@ -60,7 +60,7 @@ class SistemaVentas:
                     "sabor": sabor,
                     "cantidad": cantidad,
                     "precio": total,
-                    "fecha_hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "fecha_hora": datetime.now().strftime("%Y-%m-%d"),
                     "stock_restante": self.helados[sabor].stock
                 }
                 self.ventas.append(venta)
@@ -102,12 +102,13 @@ def vender_helado(venta: VentaRequest):
             "cantidad": venta.cantidad,
             "precio": total / venta.cantidad,  # Precio unitario
             "total": total,
-            "fecha_hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "fecha_hora": datetime.now().strftime("%Y-%m-%d"),  # Aquí se asegura de mostrar solo la fecha
             "stock_restante": sistema_ventas.helados[venta.sabor].stock  # Stock restante
         }
         return {"message": message, "venta": venta_data, "total": total}
     else:
         raise HTTPException(status_code=400, detail=message)
+
 
 
 @app.get("/total")

@@ -9,25 +9,26 @@ document.getElementById('vender-form').addEventListener('submit', async function
     const sabor = document.getElementById('sabor').value;
     const cantidad = document.getElementById('cantidad').value;
 
-    const response = await fetch('/vender', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ sabor, cantidad }),
-    });
-    
-    if (response.ok) {
-        const data = await response.json();
-        alert(data.message);
-        document.getElementById('total-venta').textContent = 'Total de la venta: $' + data.total.toFixed(2);
-        actualizarTablaVentas(data.ventas); // Actualiza la tabla con la nueva venta
-    } else {
-        const errorData = await response.json();
-        alert('Error: ' + errorData.detail);
-    }
+    if (confirm(`¿Estás seguro de que deseas registrar la venta de ${cantidad} helado(s) de sabor ${sabor}?`)) {
+        const response = await fetch('/vender', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ sabor, cantidad }),
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            document.getElementById('total-venta').textContent = 'Total de la venta: $' + data.total.toFixed(2);
+            actualizarTablaVentas(data.ventas); // Actualiza la tabla con la nueva venta
+        } else {
+            const errorData = await response.json();
+            alert('Error: ' + errorData.detail);
+        }
 
-    actualizarTotal();
+        actualizarTotal();
+    }
 });
 
 async function cargarSabores() {
@@ -73,37 +74,28 @@ async function actualizarTablaVentas() {
     document.getElementById('total-ventas').textContent = `Total de ventas acumulado: $${data.total_ventas.toFixed(2)}`;
 }
 
-
-
 async function limpiarVentas() {
-    const response = await fetch('/limpiar-ventas', { method: 'POST' });
-    if (response.ok) {
-        const data = await response.json();
-        alert(data.message);
-        actualizarTablaVentas([]); // Limpiar la tabla en la UI
-    } else {
-        const errorData = await response.json();
-        alert('Error: ' + errorData.detail);
+    if (confirm('¿Estás seguro de que deseas limpiar todas las ventas?')) {
+        const response = await fetch('/limpiar-ventas', { method: 'POST' });
+        if (response.ok) {
+            actualizarTablaVentas([]); // Limpiar la tabla en la UI
+            actualizarTotal(); // Actualizar el total acumulado
+        } else {
+            const errorData = await response.json();
+            alert('Error: ' + errorData.detail);
+        }
     }
 }
 
 async function resetStock() {
-    const confirmReset = confirm("¿Estás seguro de que deseas resetear el stock y reiniciar las ventas?");
-    if (confirmReset) {
+    if (confirm('¿Estás seguro de que deseas resetear el stock? Esto también reiniciará las ventas acumuladas.')) {
         const response = await fetch('/reset', { method: 'POST' });
-        const data = await response.json();
-        alert(data.message);
-
-        // Actualiza los totales en la UI
-        document.getElementById('total-venta').textContent = 'Total de la venta: $0.00';
-        document.getElementById('total-ventas').textContent = 'Total de ventas acumulado: $0.00';
-
-        // Limpia la tabla de ventas
-        actualizarTablaVentas([]);
-    } else {
-        alert("El stock no ha sido reseteado.");
+        if (response.ok) {
+            actualizarTotal();
+            actualizarTablaVentas([]); // Limpiar la tabla en la UI
+        } else {
+            const errorData = await response.json();
+            alert('Error: ' + errorData.detail);
+        }
     }
 }
-
-
-
