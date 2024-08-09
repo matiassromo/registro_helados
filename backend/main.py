@@ -62,14 +62,23 @@ class SistemaVentas:
         if sabor in self.helados:
             success, message, total = self.helados[sabor].vender(cantidad)
             if success:
-                venta = {
-                    "sabor": sabor,
-                    "cantidad": cantidad,
-                    "precio": total,
-                    "fecha_hora": datetime.now().strftime("%Y-%m-%d"),
-                    "stock_restante": self.helados[sabor].stock
-                }
-                self.ventas.append(venta)
+                # Buscar si el sabor ya existe en la lista de ventas
+                venta_existente = next((venta for venta in self.ventas if venta["sabor"] == sabor), None)
+                if venta_existente:
+                    # Actualizar los valores existentes
+                    venta_existente["cantidad"] += cantidad
+                    venta_existente["precio"] += total
+                    venta_existente["stock_restante"] = self.helados[sabor].stock
+                else:
+                    # Agregar una nueva entrada si no existe
+                    venta = {
+                        "sabor": sabor,
+                        "cantidad": cantidad,
+                        "precio": total,
+                        "fecha_hora": datetime.now().strftime("%Y-%m-%d"),
+                        "stock_restante": self.helados[sabor].stock
+                    }
+                    self.ventas.append(venta)
                 return success, message, total
             else:
                 return False, message, 0.0
@@ -87,10 +96,11 @@ class SistemaVentas:
 
     def limpiar_ventas(self):
         self.ventas.clear()
-        
+
     def reset_stock(self):
         for helado in self.helados.values():
             helado.reset_stock()
+
 
 app = FastAPI()
 sistema_ventas = SistemaVentas()
