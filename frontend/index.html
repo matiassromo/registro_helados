@@ -26,8 +26,22 @@
         <h2 class="mt-5 text-center" id="total-venta">Total de la venta: $0.00</h2>
         <h2 class="mt-5 text-center" id="total-ventas">Total de ventas acumulado: $0.00</h2>
 
-        <button class="btn btn-success mt-3 btn-block" onclick="guardarVentas()">Guardar Ventas en Excel</button>
-        <button class="btn btn-warning mt-3 btn-block" onclick="eliminarExcel()">Eliminar Archivo Excel</button>
+        <table id="ventas-tabla" class="table mt-4">
+            <thead>
+                <tr>
+                    <th>Sabor</th>
+                    <th>Cantidad</th>
+                    <th>Precio</th>
+                    <th>Fecha</th>
+                    <th>Stock Restante</th>
+                </tr>
+            </thead>
+            <tbody id="ventas-tabla-cuerpo">
+                <!-- Las ventas se agregarán aquí -->
+            </tbody>
+        </table>
+
+        <button class="btn btn-warning mt-3 btn-block" onclick="limpiarVentas()">Limpiar Ventas</button>
         <button class="btn btn-danger mt-3 btn-block" onclick="resetStock()">Resetear Stock</button>
     </div>
 

@@ -2,11 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import pandas as pd
 from datetime import datetime
-import os
-
-EXCEL_FILE_PATH = "ventas_helados.xlsx"
 
 class Helado:
     def __init__(self, sabor, stock=10, precio=0.80):
@@ -60,68 +56,35 @@ class SistemaVentas:
         if sabor in self.helados:
             success, message, total = self.helados[sabor].vender(cantidad)
             if success:
-                self.ventas.append({
+                venta = {
                     "sabor": sabor,
                     "cantidad": cantidad,
-                    "precio_unitario": self.helados[sabor].precio,
-                    "total": cantidad * self.helados[sabor].precio,
+                    "precio": total,
                     "fecha_hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "stock_restante": self.helados[sabor].stock
-                })
-            return success, message, total
+                }
+                self.ventas.append(venta)
+                return success, message, total
+            else:
+                return False, message, 0.0
         else:
             return False, f"El sabor {sabor} no está disponible.", 0.0
 
     def calcular_total_ventas(self):
-        total = sum(helado.calcular_total_ventas() for helado in self.helados.values())
-        return total
+        return sum(venta["precio"] for venta in self.ventas)
 
     def mostrar_stock(self):
-        stock_info = {helado.sabor: helado.stock for helado in self.helados.values()}
-        return stock_info
-
-    def guardar_ventas_excel(self):
-        modo = 'a' if os.path.exists(EXCEL_FILE_PATH) else 'w'
-
-        try:
-            with pd.ExcelWriter(EXCEL_FILE_PATH, engine='openpyxl', mode=modo) as writer:
-                if 'Ventas' in writer.book.sheetnames:
-                    ventas_sheet = writer.book['Ventas']
-                    startrow = ventas_sheet.max_row
-                    df = pd.DataFrame(self.ventas)
-                    df.to_excel(writer, sheet_name='Ventas', index=False, startrow=startrow, header=False)
-                else:
-                    df = pd.DataFrame(self.ventas)
-                    df.to_excel(writer, sheet_name='Ventas', index=False)
-
-                if 'Stock' in writer.book.sheetnames:
-                    writer.book.remove(writer.book['Stock'])
-                stock_data = {sabor: helado.stock for sabor, helado in self.helados.items()}
-                stock_df = pd.DataFrame(list(stock_data.items()), columns=['Sabor', 'Stock Restante'])
-                stock_df.to_excel(writer, sheet_name='Stock', index=False)
-
-            return EXCEL_FILE_PATH, True, "Las ventas y el stock han sido guardados en el archivo Excel."
-
-        except PermissionError as e:
-            return None, False, f"Error de permisos: {str(e)}"
-        except Exception as e:
-            return None, False, f"Error: {str(e)}"
-
-    def eliminar_archivo_excel(self):
-        if os.path.exists(EXCEL_FILE_PATH):
-            os.remove(EXCEL_FILE_PATH)
-            self.ventas.clear()
-            self.reset_stock()
-            return True, "El archivo Excel ha sido eliminado y todas las ventas se han reiniciado."
-        else:
-            return False, "No se encontró un archivo Excel para eliminar."
-
-    def reset_stock(self):
-        for helado in self.helados.values():
-            helado.reset_stock()
+        return {helado.sabor: helado.stock for helado in self.helados.values()}
 
     def obtener_sabores_ordenados(self):
         return sorted(self.helados.keys())
+
+    def limpiar_ventas(self):
+        self.ventas.clear()
+        
+    def reset_stock(self):
+        for helado in self.helados.values():
+            helado.reset_stock()
 
 app = FastAPI()
 sistema_ventas = SistemaVentas()
@@ -134,14 +97,24 @@ class VentaRequest(BaseModel):
 def vender_helado(venta: VentaRequest):
     success, message, total = sistema_ventas.registrar_venta(venta.sabor, venta.cantidad)
     if success:
-        return {"message": message, "total": total}
+        venta_data = {
+            "sabor": venta.sabor,
+            "cantidad": venta.cantidad,
+            "precio": total / venta.cantidad,  # Precio unitario
+            "total": total,
+            "fecha_hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "stock_restante": sistema_ventas.helados[venta.sabor].stock  # Stock restante
+        }
+        return {"message": message, "venta": venta_data, "total": total}
     else:
         raise HTTPException(status_code=400, detail=message)
+
 
 @app.get("/total")
 def total_ventas():
     total = sistema_ventas.calcular_total_ventas()
-    return {"total_ventas": total}
+    return {"total_ventas": total, "ventas": sistema_ventas.ventas}
+
 
 @app.get("/stock")
 def stock_helados():
@@ -152,32 +125,21 @@ def stock_helados():
 def sabores():
     return sistema_ventas.obtener_sabores_ordenados()
 
-@app.post("/guardar")
-def guardar_ventas():
-    path, success, message = sistema_ventas.guardar_ventas_excel()
-    if success:
-        return {"message": message}
-    else:
-        raise HTTPException(status_code=500, detail=message)
-
-@app.post("/eliminar-excel")
-def eliminar_excel():
-    success, message = sistema_ventas.eliminar_archivo_excel()
-    if success:
-        return {"message": message}
-    else:
-        raise HTTPException(status_code=400, detail=message)
+@app.post("/limpiar-ventas")
+def limpiar_ventas():
+    sistema_ventas.limpiar_ventas()
+    return {"message": "Todas las ventas han sido eliminadas."}
 
 @app.post("/reset")
 def reset_stock():
-    sistema_ventas.reset_stock()
-    return {"message": "Todos los stocks han sido reseteados a 10."}
+    sistema_ventas.limpiar_ventas()  # Limpia las ventas
+    sistema_ventas.reset_stock()  # Resetea el stock de todos los helados
+    return {"message": "Todos los stocks han sido reseteados a 10 y las ventas han sido reiniciadas."}
 
-# Montar los archivos estáticos
+
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
-# Punto de entrada para servir el archivo HTML
 @app.get("/", response_class=HTMLResponse)
 def serve_html():
-    with open(os.path.join("frontend", "index.html")) as f:
+    with open("frontend/index.html") as f:
         return HTMLResponse(f.read())
